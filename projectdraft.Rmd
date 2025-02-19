@@ -1,0 +1,204 @@
+---
+title: "College Enrollment Project"
+output: 
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+library(tidyverse)
+library(modelr)
+```
+
+### Group Members
+
+* Noe Goldhaber  
+* Amsyar Md Hanif
+* Nadine Mohamad Ali
+
+## Introduction
+
+Our question on this analysis is how enrollment is influenced by the number of admitted students. We figured that there is a trend between number of admitted students and number of students enrolled. Our motivation to do analysis on this topic is because we would like to help visualize the data to institutions, on the number of enrollment and number of student admission and help institutions to decide how many students they should admit. Hence, this analysis is to project the correlation between number of admitted students and number of enrollment in institutions and develops an accurate model to predict yield rates for university admissions by looking not only admission rate but also the selectivity of the university.  
+By using linear regression and performing Welch t-tests, there is a positive correlation between the number of enrollments and number of admissions.  
+
+
+## Background
+
+The data set is about the US post-secondary institutions offering a 4 year program, undergraduate degree, and at least 100 student enrollment. This data set contains information related to the admission and enrollment of the institution for the period of 2020-2021. For instance, it has data on number of applicants, number of admissions, number of full time enrollment, and 75th percentile of the SAT score of each institution. 
+
+This dataset is compiled by a contributor, JF Shultz, a Data Science MS student at University of Colorado-Boulder. This data were collected annually by The Integrated Postsecondary Education Data System (IPEDS) and distributed by the Postsecondary Branch of the National Center for Education Statistics (NCES). 
+
+The key variables in this data that we are going to use are : Admissions and Enrollment.  
+`Admission` means the number of student admission granted by the institution during the 2020-2021 period  
+`Enrollment` means total number of full time student enrolled  
+
+The data is from Kaggle found at https://www.kaggle.com/datasets/jfschultz/us-college-admisions-2021-rates-and-test-scores
+
+When we analyse the data we have figured out that linear regression between number of admitted students and number of enrollment exist. We believe, by this analysis we can help institutions plan on their admission rate based on the number of enrollment from the past year to avoid under-enrollment or over-enrollment. This is because, not all admitted students will be confirmed to enroll in that university. For instance, University of Wisconsin- Madison has over-enrollment for a quite a few times, so by this we think that we can help institutions predict on how many enrollment will there be on each year based on the number of admitted students. 
+
+Unusual factors which may affect interpretation of results:
+
+* students tend to enroll in top ranked universities
+* different universities might have different enrollment capacity
+
+In this report, we run the linear regression between number of admitted students and number of enrollment to see whether our data fulfill all three of the linear regression assumption or not, to determine whether the linear regression model is appropriate. Then, we run the hypothesis testing and confidence interval for the slope linear regression.  
+
+Then, we intend to group the institutions according to their selectivity
+(Very High, High, Mid, Low, and Very Low) which we determine based on the admission rate.
+
+From there, we combine all the selectivity groups graph into the general linear regression graph and we can see the difference between each selectivity's slope and also the general linear regression slope, showing how each selectivity group are different and how it influence the number of full time enrollment based on the slope.  
+
+## Analysis  
+
+```{r echo=FALSE}
+college = read.csv("../../data/df.csv")
+
+ggplot(college, aes(x = Admissions, y = Enrollment)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = F) +
+  labs(title = "Scatterplot of Enrollment versus Admissions",
+       subtitle = "with a Regression Line",
+       x = "Admissions",
+       y = "Enrollment")
+```
+
+Here is a visual representation of our regression model. There are a few positive outliers, and the variance of the model appears to be less consistent as admissions increases, however overall the model looks pretty good and no matter what it would be difficult to estimate the positive X outliers. 
+
+## Model and Assumptions  
+
+```{r include=FALSE}
+model = lm(college$Enrollment ~ college$Admissions)
+summary(model)
+```
+
+By running `summary(model)`, the model shows adjusted R^sqaured is 0.8092 suggesting a signification correlation for our linear model. Further, the p-values associated with each of the coefficients are both less than 0.05 which suggest that they are both significant.  
+
+```{r echo=FALSE}
+admission_with_residuals = college %>% 
+  add_residuals(model)
+ggplot(admission_with_residuals, aes(x = Admissions, y = resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residual Plot for Enrollments",
+       x = "Admissions",
+       y = "Residuals")
+```
+
+### Checking The Linear Regression Model Assumption  
+
+A1: The residuals show non obvious linear pattern with uncommon outliers, so the linearity can be assumed satisfied  
+A2: Normal error points is near the line on average and the points are seemingly roughly symmetrically spread in both directions around 0, so normal errors around 0 is satisfied  
+A3: The spread of the residuals around the center line increases across the plot, so constant variance is violated  
+
+## Confidence Interval for $\hat{\beta_1}$  
+
+To confirm our assumption, we decided to compute the 95% confidence interval on $\beta_1$  
+
+```{r include=FALSE}
+beta_hat_1 = 0.197260
+C = 0.95
+n = nrow(college)
+se = 0.002573
+
+moe = qt(C + (1-C)/2, df = n - 2)*se
+left = beta_hat_1 - moe
+right = beta_hat_1 + moe
+
+c(left, right)
+```
+
+Using the model we have built earlier to gather all the necessary information to compute the confidence interval, we are 95% confident that the true value of $\hat{\beta_1}$ is between 0.0156546 and 0.0257494.  
+
+## Hypothesis Testing for $\hat{\beta_1}$  
+
+We are interested in the presence of a positive linear relationship between Admissions and Enrollments. Hence, we will use a one-sided alternative hypothesis.  
+The null hypothesis captures that there is no pattern or no relationship.  
+The alternative hypothesis suggests that there is a positive linear relationship between Admissions and Enrollment.  
+
+$$
+H_0:\beta_1 = 0
+\\H_A:\beta_1 > 0
+$$
+
+```{r include=FALSE}
+point_estimate = 0.197260
+n = nrow(college)
+se = 0.002573
+test_stat = (point_estimate-0)/se
+pt(test_stat, df = n-2, lower.tail = FALSE)
+```
+
+After performing a Hypothesis Test, we got a relatively small p-value of less than $2*e^{-16}$. We notice that this p-value is less than the significance value of 0.05. Hence, we find enough evidence to reject the null hypothesis and suggest that there is enough evidence to suggest that there is a positive linear relationship between the number of Admissions and number of Enrollments (p < $2*e^{-16}$, linear regression).  
+
+### Introducing Selectivity for Admissions  
+
+```{r echo=FALSE}
+college = college %>% 
+  mutate(selectivity = case_when(
+    Admission.Rate <= .15 ~ "Very High",
+    Admission.Rate > .15 & Admission.Rate <= .3 ~ "High",
+    Admission.Rate > .3 & Admission.Rate <= .6 ~ "Mid",
+    Admission.Rate > .6 & Admission.Rate <= .8 ~ "Low",
+    Admission.Rate > .8 ~ "Very Low"
+  ))
+
+college %>% 
+  select(Name, Admission.Rate, selectivity) %>% 
+  head()
+```
+
+We arbitrary designated a `selectivity` variable! This is looking at whether or not admission rate influences the yield rate by turning admission rate into a categorical variable. 
+
+```{r echo=FALSE}
+ggplot(college, aes(x = Admissions, y = Enrollment)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~ selectivity) +
+  labs(title = "Scatterplot of Enrollment versus Admissions",
+       subtitle = "According to Selctivity Levels")
+```
+
+```{r echo=FALSE}
+ggplot(college, aes(x = Admissions, y = Enrollment)) +
+  geom_point(aes(color = selectivity)) +
+  geom_smooth(aes(color = selectivity), method = "lm", se = FALSE) +
+  geom_smooth(method = "lm", se = F, color = 'red', linetype = "dashed") +
+  labs(title = "Scatterplot of Enrollment versus Admissions",
+       subtitle = "According to Selectivity Levels for Each Color",
+       x = "Admissions",
+       y = "Enrollment")
+```
+
+Here are all the different linear regressions for different selectivities. For very high and high selectivities, using the same linear regression model will not be accurate, however, for most admissions rates the general model (red dashed line) works just fine. Depending on the university's selectivity and reputation, a different model might be more appropriate. Further analysis and isolation of data is needed at this time.  
+
+```{r echo=FALSE}
+collegeratio = college %>% 
+  mutate(yield = Enrollment / Admissions) %>% 
+  select(Name, yield, selectivity) %>% 
+  arrange(desc(yield))
+
+head(collegeratio)
+```
+
+Here is another variable we defined that could be interesting for further analysis. The `yield` variable, which is the yield rate, which is form of the slope for the linear regression model.  
+
+## Discussion
+
+After applying linear regression model, we found that there is a positive correlation between the number of enrollments and number of admissions. Our analysis provides strong evidence of positive relation between the two variables, with a higher number of admission will likely increase the number of enrollments.  
+
+Based on our analysis, we are able to see that most of the institutions do use the general model to estimate the number of enrollment based on the number of admissions. We also conclude that institutions with High and Very High Selectivity should use a different model to estimate their number of enrollments as they have higher proportion of enrollment over admissions. In other words, these institutions admit less but the enrollment still remains high. However, due to some assumptions of appropriate linear regression model being violated, we might have come to an incorrect conclusion for the predictions. There could be a more accurate model to predict the number of enrollments and admissions.  
+
+There are two potential shortcomings of this analysis. First, we don't delve deeper into each of selectivity graph and compared our findings to the listed institutions' capacity (which we don't have in this analysis) with our predicted number of enrollment over number of admissions. Second, we don't take into account the institution's reputation and rankings based on the selectivity of the institutions. These factors were very subjective which could alter our findings if we have included them. If we include these factors, we might have additional insights on our analysis.  
+
+New questions that could be added into this analysis is "Does high-ranked institutions have different Selectivity and projected number of enrolled students?", "Does education institution's capacity affect Admissions and Enrollments?". It would be complicated to take into account every factor to find the correlation between number of admitted students and number of enrollment in institutions. Our results are only based on the interests of an objective data analysis. The correlation between number of admitted students and number of enrollment in institutions may still need to be evaluated for each institution.  
+
+## Reference  
+
+The analysis is based on data from the 2020-2021 US College Admissions dataset.^[See the dataset on Kaggle: [US College & University Admissions 2020-2021](https://www.kaggle.com/datasets/jfschultz/us-college-admisions-2021-rates-and-test-scores).] 
+
